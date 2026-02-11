@@ -21,25 +21,26 @@ function run_rotation_averaging_SDP(Rrel, H; anisotropic_cost=true, cSO3_constra
         rk -- rank of the solution
         obj_val -- objective value at the solution
     """
+    # 목적함수
     cost_matrix = construct_cost_matrix(Rrel, H; anisotropic=anisotropic_cost)
 
     N = Rrel.size[1] ÷ 3
     I3x3 = [1.0  0  0; 0  1.0  0; 0  0  1.0]
     
-    model = Model(SCS.Optimizer)
+    model = Model(SCS.Optimizer) # Splitting Conic Solver : 1차 근사 사용, 정밀도 낮음
     set_attribute(model, "eps_abs", eps_abs)
     set_attribute(model, "eps_rel", eps_rel)
     set_attribute(model, "eps_infeas", eps_infeas)
     set_attribute(model, "max_iters", max_iters)
-    set_silent(model)
-    @variable(model, X[1:3*N, 1:3*N], PSD)
+    set_silent(model) # solver의 계산 log를 띄우지 않도록 설정.
+    @variable(model, X[1:3*N, 1:3*N], PSD) #PSD(positive semidefinite)라는 제약조건 설정, N개의 회전 정보를 담기 위해 3N x 3N
 
     # Add block diagonal constraints
     for i = 1:N
         @constraint(model, X[3*i-2:3*i, 3*i-2:3*i] == I3x3)
     end
 
-    # Add conv(SO(3)) constraints
+    # Add conv(SO(3)) constraints : convex hull of SO(3)
     if cSO3_constraints
         for i=1:N
             for j=i+1:N
@@ -89,6 +90,7 @@ function run_rotation_averaging_SDP(Rrel, H; anisotropic_cost=true, cSO3_constra
     return R_est, stat, stime, rk, obj_val
 end
 
+
 function construct_cost_matrix(Rrel, H; anisotropic=true, rescale_hessians=true)
     """
     Args:
@@ -107,7 +109,7 @@ function construct_cost_matrix(Rrel, H; anisotropic=true, rescale_hessians=true)
         k = 1
         for i=1:N
             for j=i+1:N
-                ii, jj = 3*i-2:3*i, 3*j-2:3*j
+                ii, jj = 3*i-2:3*i, 3*j-2:3*j #For each ijth 3x3 matrix in Rrel
                 if sum(Rrel[ii, jj].^2) > 0
                     H_eigvals[k,:] .= real.(eigvals(H[ii, jj]))
                     k += 1
@@ -122,7 +124,7 @@ function construct_cost_matrix(Rrel, H; anisotropic=true, rescale_hessians=true)
     cost_matrix = zeros(3*N, 3*N)
     for i=1:N
         for j=i+1:N
-            ii, jj = 3*i-2:3*i, 3*j-2:3*j
+            ii, jj = 3*i-2:3*i, 3*j-2:3*j # whenever it is iso or ansio
             if sum(Rrel[ii, jj].^2) > 0
                 if anisotropic
                     H_ij = H[ii, jj] / (rescale_hessians ? mean(maximum(H_eigvals, dims=2)) : 1)
@@ -134,7 +136,7 @@ function construct_cost_matrix(Rrel, H; anisotropic=true, rescale_hessians=true)
             end
         end
     end
-    cost_matrix .= cost_matrix + cost_matrix'
+    cost_matrix .= cost_matrix + cost_matrix' # For a completely symmetric matrix
     return cost_matrix
 end
 
@@ -150,4 +152,5 @@ end
 function rank(X; threshold=0.999)
     _, singular_vals, _ = svd(X)
     return findfirst(cumsum(singular_vals) / sum(singular_vals) .> threshold)
+    #findfirst : threshold보다 큰 dominant singular value를 추출.
 end

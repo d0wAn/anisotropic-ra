@@ -20,6 +20,7 @@ The SDP program is implemented using the [conic splitting solver](https://arxiv.
 ## Citation
 If you find this work useful in your research, consider citing:
 ```bibtex
+
 @article{olsson2025certifiably,
     author    = {Olsson, Carl and Lochman, Yaroslava and Malmport, Johan and Zach, Christopher},
     title     = {Certifiably Optimal Anisotropic Rotation Averaging},

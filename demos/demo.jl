@@ -9,6 +9,12 @@ function run_and_eval_rotation_averaging(R_true, Rrel, H; anisotropic_cost=true,
     Args:
         anisotropic_cost -- if true, uses the proposed anisotropic cost
         cSO3_constraints -- if true, includes the proposed convex hull constraints
+
+                            anisotropic_cost
+                            true            false
+        cSO3_constraints  + --------------------------------
+                    true  | SDP-cSO(3)      SDP-cSO(3)-ɪꜱᴏ
+                    false | SDP-O(3)-Aɴɪꜱᴏ  SDP-O(3)-ɪꜱᴏ
     """
     N = size(R_true, 1)
     R_est, stat, stime, rk, obj_val = run_rotation_averaging_SDP(Rrel, H; anisotropic_cost=anisotropic_cost, cSO3_constraints=cSO3_constraints)
@@ -34,15 +40,25 @@ function run_and_eval_rotation_averaging(R_true, Rrel, H; anisotropic_cost=true,
     display("Frobenius error: $fro_err, Mahalonobis error: $mahal_err, Angular error: $angular_err, Solver runtime: $stime")
 end
 
+"""
 display("Synthetic dataset:")
 N = 50
 p = 0.5
 min_H_eigval = 10
 max_H_eigval = 100
 R_true, Rrel, H = generate_data(N, p; min_H_eigval=min_H_eigval, max_H_eigval=max_H_eigval)
+# Since being generated, it continuously changes. 
 run_and_eval_rotation_averaging(R_true, Rrel, H)
+"""
 
+  
+R_true, Rrel, H = read_matlab_data(raw"C:\Users\dwkdw\Desktop\Rotation_Averaging\anisotropic-ra\data\lu_sphinx.mat") 
 
-display("LU Sphinx dataset:")
-R_true, Rrel, H = read_matlab_data("../data/lu_sphinx.mat")
-run_and_eval_rotation_averaging(R_true, Rrel, H)
+display("LU Sphinx dataset: SDP-cSO(3)")
+#run_and_eval_rotation_averaging(R_true, Rrel, H)
+
+display("LU Sphinx dataset: SDP-O(3)-Aɴɪꜱᴏ")
+run_and_eval_rotation_averaging(R_true, Rrel, H; cSO3_constraints=false)
+
+display("LU Sphinx dataset: SDP-O(3)-ɪꜱᴏ")
+#run_and_eval_rotation_averaging(R_true, Rrel, H; anisotropic_cost=false, cSO3_constraints=false)
